@@ -14,6 +14,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: true
+      NODE_OPTIONS: --max-old-space-size=4096
     
     steps:
       - name: Checkout code
@@ -30,9 +33,9 @@ jobs:
           version: 9
           
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --ignore-workspace
         env:
-          PUPPETEER_SKIP_DOWNLOAD: true
+          PNPM_PACKAGE_MANAGER: pnpm@9
           
       - name: Build MCP Servers
         run: |
@@ -46,7 +49,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
-          PUPPETEER_SKIP_DOWNLOAD: true
           
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4

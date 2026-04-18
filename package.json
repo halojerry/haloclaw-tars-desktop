@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "main": "./dist/main/main.js",
-  "packageManager": "pnpm@9.10.0",
   "description": "Ozon电商AI助手 - 基于UI-TARS的智能电商解决方案",
   "author": "ByteDance",
   "scripts": {
