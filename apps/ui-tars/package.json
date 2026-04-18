@@ -1,0 +1,19 @@
+{
+  "name": "ui-tars-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HaloClaw - Ozon E-commerce AI Assistant based on UI-TARS",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "postinstall": "electron-builder install-app-deps",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "devDependencies": {
+    "@electron/asar": "^3.2.18",
+    "@electron/fuses": "^1.8.0"
+  }
+}

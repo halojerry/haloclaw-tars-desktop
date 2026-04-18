@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+apps/ui-tars/node_modules/
+apps/ui-tars/src/renderer/node_modules/
+packages/*/node_modules/
+
+# Build outputs
+dist/
+out/
+apps/ui-tars/out/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MCP dist (we commit source, not compiled)
+# packages/*/dist/
+
+# Backup
+skills.bak/
+
+# Test
+tests/

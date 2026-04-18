@@ -22,24 +22,31 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: '22'
           
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9
           
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        working-directory: apps/ui-tars
-        
-      - name: Build Windows x64
+        run: pnpm install
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: true
+          
+      - name: Build MCP Servers
+        run: |
+          cd packages/ozon-selection-mcp && pnpm install && pnpm build
+          cd ../source-1688-mcp && pnpm install && pnpm build
+          cd ../ozon-listing-mcp && pnpm install && pnpm build
+          
+      - name: Build Electron App
         run: pnpm run build
         working-directory: apps/ui-tars
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
+          PUPPETEER_SKIP_DOWNLOAD: true
           
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -65,7 +72,7 @@ jobs:
         run: ls -la dist/
         
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version
         with:
           tag_name: ${{ github.event.inputs.version && format('v{0}', github.event.inputs.version) || github.ref_name }}
