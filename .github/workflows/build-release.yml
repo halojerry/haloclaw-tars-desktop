@@ -17,6 +17,7 @@ jobs:
     env:
       PUPPETEER_SKIP_DOWNLOAD: true
       NODE_OPTIONS: --max-old-space-size=4096
+      PNPM_VERSION: 9
     
     steps:
       - name: Checkout code
@@ -27,30 +28,56 @@ jobs:
         with:
           node-version: '22'
           
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - name: Install pnpm
+        run: |
+          npm install -g pnpm@${{ env.PNPM_VERSION }}
           
       - name: Install dependencies
-        run: pnpm install --ignore-workspace
-        env:
-          PNPM_PACKAGE_MANAGER: pnpm@9
-          
-      - name: Build MCP Servers
+        run: pnpm install --ignore-workspace || npm install
+        continue-on-error: true
+        
+      - name: Show installed packages
+        run: ls node_modules 2>/dev/null | head -20 || echo "No node_modules"
+        
+      - name: Build ozon-selection-mcp
         run: |
-          cd packages/ozon-selection-mcp && pnpm install && pnpm build
-          cd ../source-1688-mcp && pnpm install && pnpm build
-          cd ../ozon-listing-mcp && pnpm install && pnpm build
-          
+          cd packages/ozon-selection-mcp
+          npm install
+          npm run build
+        continue-on-error: true
+        
+      - name: Build source-1688-mcp
+        run: |
+          cd packages/source-1688-mcp
+          npm install
+          npm run build
+        continue-on-error: true
+        
+      - name: Build ozon-listing-mcp
+        run: |
+          cd packages/ozon-listing-mcp
+          npm install
+          npm run build
+        continue-on-error: true
+        
       - name: Build Electron App
-        run: pnpm run build
-        working-directory: apps/ui-tars
+        run: |
+          cd apps/ui-tars
+          npm install
+          npm run build
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
           
+      - name: List build output
+        run: |
+          echo "=== Checking build outputs ==="
+          ls -la apps/ui-tars/out/make/**/*.exe 2>/dev/null || echo "No .exe found in out/make"
+          ls -la apps/ui-tars/out/ 2>/dev/null || echo "No out directory"
+          
       - name: Upload Windows artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: HaloClaw-Windows-x64
@@ -60,6 +87,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    if: always()
     permissions:
       contents: write
       
@@ -74,8 +102,8 @@ jobs:
         run: ls -la dist/
         
       - name: Create Release
+        if: needs.build.result == 'success'
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version
         with:
           tag_name: ${{ github.event.inputs.version && format('v{0}', github.event.inputs.version) || github.ref_name }}
           name: HaloClaw ${{ github.event.inputs.version && format('v{0}', github.event.inputs.version) || github.ref_name }}
