@@ -12,12 +12,10 @@ on:
         default: '1.0.0'
 
 jobs:
-  build:
-    runs-on: windows-latest
+  build-mcp:
+    runs-on: ubuntu-latest
     env:
-      PUPPETEER_SKIP_DOWNLOAD: true
       NODE_OPTIONS: --max-old-space-size=4096
-      PNPM_VERSION: 9
     
     steps:
       - name: Checkout code
@@ -28,43 +26,76 @@ jobs:
         with:
           node-version: '22'
           
-      - name: Install pnpm
-        run: |
-          npm install -g pnpm@${{ env.PNPM_VERSION }}
-          
-      - name: Install dependencies
-        run: pnpm install --ignore-workspace || npm install
-        continue-on-error: true
-        
-      - name: Show installed packages
-        run: ls node_modules 2>/dev/null | head -20 || echo "No node_modules"
-        
-      - name: Build ozon-selection-mcp
+      - name: Install dependencies for ozon-selection-mcp
         run: |
           cd packages/ozon-selection-mcp
           npm install
           npm run build
         continue-on-error: true
         
-      - name: Build source-1688-mcp
-        run: |
-          cd packages/source-1688-mcp
-          npm install
-          npm run build
-        continue-on-error: true
-        
-      - name: Build ozon-listing-mcp
+      - name: Install dependencies for ozon-listing-mcp
         run: |
           cd packages/ozon-listing-mcp
           npm install
           npm run build
         continue-on-error: true
         
+      - name: Install dependencies for source-1688-mcp
+        run: |
+          cd packages/source-1688-mcp
+          npm install
+          npm run build
+        continue-on-error: true
+        
+      - name: List MCP build outputs
+        run: |
+          echo "=== Checking MCP build outputs ==="
+          ls -la packages/ozon-selection-mcp/dist/ 2>/dev/null || echo "ozon-selection-mcp dist not found"
+          ls -la packages/ozon-listing-mcp/dist/ 2>/dev/null || echo "ozon-listing-mcp dist not found"
+          ls -la packages/source-1688-mcp/dist/ 2>/dev/null || echo "source-1688-mcp dist not found"
+          
+      - name: Upload MCP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-servers
+          path: |
+            packages/ozon-selection-mcp/dist/
+            packages/ozon-listing-mcp/dist/
+            packages/source-1688-mcp/dist/
+          retention-days: 5
+
+  build-electron:
+    runs-on: windows-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: true
+      NODE_OPTIONS: --max-old-space-size=4096
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          
+      - name: Install dependencies for Electron app
+        run: |
+          cd apps/ui-tars
+          npm install --legacy-peer-deps
+        timeout-minutes: 30
+        continue-on-error: true
+        
+      - name: Show installed packages
+        run: |
+          echo "=== Installed packages ==="
+          ls apps/ui-tars/node_modules/.bin/ 2>/dev/null | head -20 || echo "No binaries"
+          
       - name: Build Electron App
         run: |
           cd apps/ui-tars
-          npm install
-          npm run build
+          npm run build || npx electron-vite build
+        timeout-minutes: 30
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,6 +106,7 @@ jobs:
           echo "=== Checking build outputs ==="
           ls -la apps/ui-tars/out/make/**/*.exe 2>/dev/null || echo "No .exe found in out/make"
           ls -la apps/ui-tars/out/ 2>/dev/null || echo "No out directory"
+          ls -la apps/ui-tars/dist/ 2>/dev/null || echo "No dist directory"
           
       - name: Upload Windows artifact
         if: success()
@@ -85,30 +117,28 @@ jobs:
           retention-days: 5
 
   release:
-    needs: build
+    needs: [build-mcp, build-electron]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && (needs.build-mcp.result == 'success' || needs.build-electron.result == 'success')
     permissions:
       contents: write
       
     steps:
-      - name: Download Windows artifact
+      - name: Download MCP artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mcp-servers
+          path: dist/mcp
+          
+      - name: Download Electron artifacts
         uses: actions/download-artifact@v4
         with:
           name: HaloClaw-Windows-x64
-          path: dist
+          path: dist/electron
           
-      - name: List artifacts
-        run: ls -la dist/
-        
-      - name: Create Release
-        if: needs.build.result == 'success'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.version && format('v{0}', github.event.inputs.version) || github.ref_name }}
-          name: HaloClaw ${{ github.event.inputs.version && format('v{0}', github.event.inputs.version) || github.ref_name }}
-          draft: true
-          files: |
-            dist/**/*.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: List all artifacts
+        run: |
+          echo "=== All artifacts ==="
+          ls -la dist/
+          ls -la dist/mcp/ 2>/dev/null || echo "No MCP dist"
+          ls -la dist/electron/ 2>/dev/null || echo "No Electron dist"

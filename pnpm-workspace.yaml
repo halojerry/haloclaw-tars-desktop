@@ -1,3 +1,5 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - 'apps/ui-tars'
+  - 'packages/ozon-selection-mcp'
+  - 'packages/ozon-listing-mcp'
+  - 'packages/source-1688-mcp'
